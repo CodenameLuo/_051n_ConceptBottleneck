@@ -127,7 +127,17 @@ class ImbalancedDatasetSampler(torch.utils.data.sampler.Sampler):
     def __len__(self):
         return self.num_samples
 
-def load_data(pkl_paths, use_attr, no_img, batch_size, uncertain_label=False, n_class_attr=2, image_dir='images', resampling=False, resol=299):
+def load_data(
+    pkl_paths, 
+    use_attr, 
+    no_img, 
+    batch_size, 
+    uncertain_label=False, 
+    n_class_attr=2, 
+    image_dir='images', 
+    resampling=False, 
+    resol=299
+):
     """
     Note: Inception needs (299,299,3) images with inputs scaled between -1 and 1
     Loads data with transformations applied, and upsample the minority class if there is class imbalance and weighted loss is not used

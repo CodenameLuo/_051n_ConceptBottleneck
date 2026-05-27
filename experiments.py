@@ -1,10 +1,9 @@
-
 import pdb
 import sys
 
+# ======================================
 
 def run_experiments(dataset, args):
-
     if dataset == 'OAI':
         from OAI.train import (
             train_X_to_C,
@@ -20,6 +19,7 @@ def run_experiments(dataset, args):
         )
 
     elif dataset == 'CUB':
+        # CUB 数据集
         from CUB.train import (
             train_X_to_C,
             train_oracle_C_to_y_and_test_on_Chat,
@@ -34,6 +34,7 @@ def run_experiments(dataset, args):
         )
 
     experiment = args[0].exp
+
     if experiment == 'Concept_XtoC':
         train_X_to_C(*args)
 
@@ -68,14 +69,33 @@ def run_experiments(dataset, args):
         hyperparameter_optimization(*args)
 
 def parse_arguments():
-    # First arg must be dataset, and based on which dataset it is, we will parse arguments accordingly
+    # First arg must be dataset, 
+    # and based on which dataset it is, 
+    # we will parse arguments accordingly
     assert len(sys.argv) > 2, 'You need to specify dataset and experiment'
-    assert sys.argv[1].upper() in ['OAI', 'CUB'], 'Please specify OAI or CUB dataset'
-    assert sys.argv[2] in ['Concept_XtoC', 'Independent_CtoY', 'Sequential_CtoY',
-                           'Standard', 'StandardWithAuxC', 'Multitask', 'Joint', 'Probe',
-                           'TTI', 'Robustness', 'HyperparameterSearch'], \
-        'Please specify valid experiment. Current: %s' % sys.argv[2]
+
+    assert sys.argv[1].upper() in [
+        'OAI', 
+        'CUB'
+    ], 'Please specify OAI or CUB dataset'
+
+    assert sys.argv[2] in [
+        'Concept_XtoC', 
+        'Independent_CtoY', 
+        'Sequential_CtoY', 
+        'Standard', 
+        'StandardWithAuxC', 
+        'Multitask', 
+        'Joint', 
+        'Probe', 
+        'TTI', 
+        'Robustness', 
+        'HyperparameterSearch'
+    ], 'Please specify valid experiment. Current: %s' % sys.argv[2]
+
+    # 数据集 大写
     dataset = sys.argv[1].upper()
+    # 实验 大写
     experiment = sys.argv[2].upper()
 
     # Handle accordingly to dataset
@@ -84,7 +104,9 @@ def parse_arguments():
     elif dataset == 'CUB':
         from CUB.train import parse_arguments
 
+    # 解析对应数据集的参数
     args = parse_arguments(experiment=experiment)
+
     return dataset, args
 
 if __name__ == '__main__':
@@ -92,10 +114,13 @@ if __name__ == '__main__':
     import torch
     import numpy as np
 
+    # 解析参数
     dataset, args = parse_arguments()
 
+    # 设种子
     # Seeds
     np.random.seed(args[0].seed)
     torch.manual_seed(args[0].seed)
 
+    # 跑实验
     run_experiments(dataset, args)
