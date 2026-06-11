@@ -76,6 +76,7 @@ class CUBDataset(Dataset):
                 if self.n_class_attr == 3:
                     one_hot_attr_label = np.zeros((N_ATTRIBUTES, self.n_class_attr))
                     one_hot_attr_label[np.arange(N_ATTRIBUTES), attr_label] = 1
+
                     return one_hot_attr_label, class_label
                 else:
                     return attr_label, class_label
@@ -143,8 +144,10 @@ def load_data(
     Loads data with transformations applied, and upsample the minority class if there is class imbalance and weighted loss is not used
     NOTE: resampling is customized for first attribute only, so change sampler.py if necessary
     """
+
     resized_resol = int(resol * 256/224)
     is_training = any(['train.pkl' in f for f in pkl_paths])
+    
     if is_training:
         transform = transforms.Compose([
             #transforms.Resize((resized_resol, resized_resol)),
@@ -152,7 +155,7 @@ def load_data(
             transforms.ColorJitter(brightness=32/255, saturation=(0.5, 1.5)),
             transforms.RandomResizedCrop(resol),
             transforms.RandomHorizontalFlip(),
-            transforms.ToTensor(), #implicitly divides by 255
+            transforms.ToTensor(), # implicitly divides by 255
             transforms.Normalize(mean = [0.5, 0.5, 0.5], std = [2, 2, 2])
             #transforms.Normalize(mean = [ 0.485, 0.456, 0.406 ], std = [ 0.229, 0.224, 0.225 ]),
             ])
@@ -160,12 +163,13 @@ def load_data(
         transform = transforms.Compose([
             #transforms.Resize((resized_resol, resized_resol)),
             transforms.CenterCrop(resol),
-            transforms.ToTensor(), #implicitly divides by 255
+            transforms.ToTensor(), # implicitly divides by 255
             transforms.Normalize(mean = [0.5, 0.5, 0.5], std = [2, 2, 2])
             #transforms.Normalize(mean = [ 0.485, 0.456, 0.406 ], std = [ 0.229, 0.224, 0.225 ]),
             ])
 
     dataset = CUBDataset(pkl_paths, use_attr, no_img, uncertain_label, image_dir, n_class_attr, transform)
+
     if is_training:
         drop_last = True
         shuffle = True
@@ -177,29 +181,67 @@ def load_data(
         loader = DataLoader(dataset, batch_sampler=sampler)
     else:
         loader = DataLoader(dataset, batch_size=batch_size, shuffle=shuffle, drop_last=drop_last)
+    
     return loader
 
-def find_class_imbalance(pkl_file, multiple_attr=False, attr_idx=-1):
+def find_class_imbalance(
+    pkl_file, 
+    multiple_attr=False, 
+    attr_idx=-1
+):
     """
     Calculate class imbalance ratio for binary attribute labels stored in pkl_file
     If attr_idx >= 0, then only return ratio for the corresponding attribute id
     If multiple_attr is True, then return imbalance ratio separately for each attribute. Else, calculate the overall imbalance across all attributes
     """
+
+    # ======================================
+
+    # 计算存储在 pkl_file 中的二元属性标签的类别不平衡比率
+    # 如果 attr_idx >= 0，则仅返回对应属性 id 的比率
+    # 如果 multiple_attr 为 True，则分别返回每个属性的不平衡比率；否则，计算所有属性的整体不平衡情况
+
+    # ======================================
+
     imbalance_ratio = []
+
+    # 加载 train.pkl
+    # CUB 实测 data 是 4796 条样本
+    # 每条样本的 attribute_label 是 112 维 0/1 向量
     data = pickle.load(open(os.path.join(BASE_DIR, pkl_file), 'rb'))
+
+    # 4796 条 数据
     n = len(data)
+    
+    # 每条数据的 attribute_label 向量的维数 ( 112 维)
+    # 即，一共有 112 个 概念
+    # 即，概念瓶颈的维度数为 112
     n_attr = len(data[0]['attribute_label'])
+
     if attr_idx >= 0:
         n_attr = 1
+
     if multiple_attr:
+        # 每个 attr 一个 ratio
+
+        # [0, 0, ..., 0]，112 维
+        # 用来统计，在整个 训练集 中，
+        # 对于每个 概念attr ，有多少张 数据样本 用到了这个 概念attr
         n_ones = [0] * n_attr
+        # [4796, 4796, ..., 4796]，112 维
         total = [n] * n_attr
     else:
         n_ones = [0]
         total = [n * n_attr]
+
+    # 对于每个 数据样本
     for d in data:
+        # 拿到该 数据样本 的 112 维的 attribute_label 向量
         labels = d['attribute_label']
+
         if multiple_attr:
+            # 统计当前的 数据样本 用到了哪些 概念attr
+            # 累加进 n_ones
             for i in range(n_attr):
                 n_ones[i] += labels[i]
         else:
@@ -207,8 +249,36 @@ def find_class_imbalance(pkl_file, multiple_attr=False, attr_idx=-1):
                 n_ones[0] += labels[attr_idx]
             else:
                 n_ones[0] += sum(labels)
+
+    # 统计后，n_ones[i] = 训练集 中第 i 个 attr 为 1 的 数据样本 数
+
+    # 算 ratio
+    # 如果是 multiple_attr=False，则只 append 一个值
+    # 如果是 multiple_attr=False，用 4796 * 112 = 537152 整个这么大的范围算负正比
     for j in range(len(n_ones)):
-        imbalance_ratio.append(total[j]/n_ones[j] - 1)
-    if not multiple_attr: #e.g. [9.0] --> [9.0] * 312
+        imbalance_ratio.append(
+            # total[j] = 4796 或 4796 * 112
+            # ( total[j] - n_ones[j] ) / n_ones[j] = n_zeros / n_ones = 负样本数 / 正样本数
+            total[j] / n_ones[j] - 1
+        )
+    # 例：imbalance[0] = 10.78
+    # 反推：n_ones[0] = ( 1 / (10.78 + 1) ) * 4796 = 407
+    # 即，第 0 个 attr 有 407 个 数据样本 上是 1
+    # 即，这 407 个 数据样本 都用到了这个 概念attr
+    # 407 / 4796 = 8.5%
+    # 
+    # 例：imbalance[N] = 3.93
+    # 反推：n_ones[0] = ( 1 / (3.93 + 1) ) * 4796 = 973
+    # 即，第 N 个 attr 有 973 个 数据样本 上是 1
+    # 即，这 973 个 数据样本 都用到了这个 概念attr
+    # 973 / 4796 = 20.3%
+    # 
+    # ratio 越大 -> 该 attr 越稀有
+    # ratio 越小 -> 该 attr 越常见
+
+    if not multiple_attr:
+        # 112 个值都相同
         imbalance_ratio *= n_attr
+
+    # 最终 imbalance 是长度 112 的列表
     return imbalance_ratio

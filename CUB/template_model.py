@@ -51,20 +51,30 @@ class End2EndModel(torch.nn.Module):
 
 
 class MLP(nn.Module):
-    def __init__(self, input_dim, num_classes, expand_dim):
+    def __init__(
+        self, 
+        input_dim, 
+        num_classes, 
+        expand_dim
+    ):
         super(MLP, self).__init__()
+
         self.expand_dim = expand_dim
+
         if self.expand_dim:
             self.linear = nn.Linear(input_dim, expand_dim)
             self.activation = torch.nn.ReLU()
-            self.linear2 = nn.Linear(expand_dim, num_classes) #softmax is automatically handled by loss function
+            self.linear2 = nn.Linear(expand_dim, num_classes) # softmax is automatically handled by loss function
+        
         self.linear = nn.Linear(input_dim, num_classes)
 
     def forward(self, x):
         x = self.linear(x)
+
         if hasattr(self, 'expand_dim') and self.expand_dim:
             x = self.activation(x)
             x = self.linear2(x)
+
         return x
 
 
@@ -99,7 +109,6 @@ def inception_v3(pretrained, freeze, **kwargs):
 
 
 class Inception3(nn.Module):
-
     def __init__(self, num_classes, aux_logits=True, transform_input=False, n_attributes=0, bottleneck=False, expand_dim=0, three_class=False, connect_CY=False):
         """
         Args:
@@ -242,7 +251,6 @@ class Inception3(nn.Module):
 
 
 class FC(nn.Module):
-
     def __init__(self, input_dim, output_dim, expand_dim, stddev=None):
         """
         Extend standard Torch Linear layer to include the option of expanding into 2 Linear layers
@@ -269,7 +277,6 @@ class FC(nn.Module):
 
 
 class InceptionA(nn.Module):
-
     def __init__(self, in_channels, pool_features):
         super(InceptionA, self).__init__()
         self.branch1x1 = BasicConv2d(in_channels, 64, kernel_size=1)
@@ -301,7 +308,6 @@ class InceptionA(nn.Module):
 
 
 class InceptionB(nn.Module):
-
     def __init__(self, in_channels):
         super(InceptionB, self).__init__()
         self.branch3x3 = BasicConv2d(in_channels, 384, kernel_size=3, stride=2)
@@ -324,7 +330,6 @@ class InceptionB(nn.Module):
 
 
 class InceptionC(nn.Module):
-
     def __init__(self, in_channels, channels_7x7):
         super(InceptionC, self).__init__()
         self.branch1x1 = BasicConv2d(in_channels, 192, kernel_size=1)
@@ -363,7 +368,6 @@ class InceptionC(nn.Module):
 
 
 class InceptionD(nn.Module):
-
     def __init__(self, in_channels):
         super(InceptionD, self).__init__()
         self.branch3x3_1 = BasicConv2d(in_channels, 192, kernel_size=1)
@@ -389,7 +393,6 @@ class InceptionD(nn.Module):
 
 
 class InceptionE(nn.Module):
-
     def __init__(self, in_channels):
         super(InceptionE, self).__init__()
         self.branch1x1 = BasicConv2d(in_channels, 320, kernel_size=1)
@@ -431,7 +434,6 @@ class InceptionE(nn.Module):
 
 
 class InceptionAux(nn.Module):
-
     def __init__(self, in_channels, num_classes, n_attributes=0, bottleneck=False, expand_dim=0, three_class=False, connect_CY=False):
         super(InceptionAux, self).__init__()
         self.conv0 = BasicConv2d(in_channels, 128, kernel_size=1)
@@ -479,7 +481,6 @@ class InceptionAux(nn.Module):
 
 
 class BasicConv2d(nn.Module):
-
     def __init__(self, in_channels, out_channels, **kwargs):
         super(BasicConv2d, self).__init__()
         self.conv = nn.Conv2d(in_channels, out_channels, bias=False, **kwargs)

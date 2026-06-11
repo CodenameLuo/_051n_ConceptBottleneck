@@ -39,9 +39,13 @@ def run_experiments(dataset, args):
         train_X_to_C(*args)
 
     elif experiment == 'Independent_CtoY':
+        # train on oracle_C
+        # test on C_hat
         train_oracle_C_to_y_and_test_on_Chat(*args)
 
     elif experiment == 'Sequential_CtoY':
+        # train on C_hat
+        # test on C_hat
         train_Chat_to_y_and_test_on_Chat(*args)
 
     elif experiment == 'Joint':
